@@ -4,11 +4,13 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Ryujinx.Common;
 using Ryujinx.Common.Configuration.Hid;
+using Ryujinx.Common.Memory;
 using Ryujinx.Common.Logging;
 using Ryujinx.HLE.HOS.Kernel.Threading;
 using Ryujinx.HLE.HOS.Services.Hid.Types;
-using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Common;
+using Ryujinx.HLE.HOS.Services.Hid.Types.Common;
 using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Npad;
+using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Common;
 
 namespace Ryujinx.HLE.HOS.Services.Hid
 {
@@ -305,7 +307,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid
             Logger.Info?.Print(LogClass.Hid, $"Connected Controller {type} to {player}");
         }
 
-        private ref RingLifo<NpadCommonState> GetCommonStateLifo(ref NpadInternalState npad)
+        private ref RingLifo<NpadCommonState, Array17<AtomicStorage<NpadCommonState>>> GetCommonStateLifo(ref NpadInternalState npad)
         {
             switch (npad.StyleSet)
             {
@@ -326,7 +328,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid
             }
         }
 
-        private void UpdateUnusedInputIfNotEqual(ref RingLifo<NpadCommonState> currentlyUsed, ref RingLifo<NpadCommonState> possiblyUnused)
+        private void UpdateUnusedInputIfNotEqual(ref RingLifo<NpadCommonState, Array17<AtomicStorage<NpadCommonState>>> currentlyUsed, ref RingLifo<NpadCommonState, Array17<AtomicStorage<NpadCommonState>>> possiblyUnused)
         {
             bool isEquals;
 
@@ -346,7 +348,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid
             }
         }
 
-        private void WriteNewInputEntry(ref RingLifo<NpadCommonState> lifo, ref NpadCommonState state)
+        private void WriteNewInputEntry(ref RingLifo<NpadCommonState, Array17<AtomicStorage<NpadCommonState>>> lifo, ref NpadCommonState state)
         {
             ref NpadCommonState previousEntry = ref lifo.GetCurrentEntryRef();
 
@@ -355,7 +357,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid
             lifo.Write(ref state);
         }
 
-        private void UpdateUnusedSixInputIfNotEqual(ref RingLifo<SixAxisSensorState> currentlyUsed, ref RingLifo<SixAxisSensorState> possiblyUnused)
+        private void UpdateUnusedSixInputIfNotEqual(ref RingLifo<SixAxisSensorState, Array17<AtomicStorage<SixAxisSensorState>>> currentlyUsed, ref RingLifo<SixAxisSensorState, Array17<AtomicStorage<SixAxisSensorState>>> possiblyUnused)
         {
             bool isEquals;
 
@@ -375,7 +377,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid
             }
         }
 
-        private void WriteNewSixInputEntry(ref RingLifo<SixAxisSensorState> lifo, ref SixAxisSensorState state)
+        private void WriteNewSixInputEntry(ref RingLifo<SixAxisSensorState, Array17<AtomicStorage<SixAxisSensorState>>> lifo, ref SixAxisSensorState state)
         {
             ref SixAxisSensorState previousEntry = ref lifo.GetCurrentEntryRef();
 
@@ -398,7 +400,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid
                 return;
             }
 
-            ref RingLifo<NpadCommonState> lifo = ref GetCommonStateLifo(ref currentNpad);
+            ref RingLifo<NpadCommonState, Array17<AtomicStorage<NpadCommonState>>> lifo = ref GetCommonStateLifo(ref currentNpad);
 
             NpadCommonState newState = new NpadCommonState
             {
@@ -495,7 +497,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid
             }
         }
 
-        private ref RingLifo<SixAxisSensorState> GetSixAxisSensorLifo(ref NpadInternalState npad, bool isRightPair)
+        private ref RingLifo<SixAxisSensorState, Array17<AtomicStorage<SixAxisSensorState>>> GetSixAxisSensorLifo(ref NpadInternalState npad, bool isRightPair)
         {
             switch (npad.StyleSet)
             {
@@ -566,7 +568,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid
 
             state.Orientation.AsSpan().CopyTo(newState.Direction.ToSpan());
 
-            ref RingLifo<SixAxisSensorState> lifo = ref GetSixAxisSensorLifo(ref currentNpad, isRightPair);
+            ref RingLifo<SixAxisSensorState, Array17<AtomicStorage<SixAxisSensorState>>> lifo = ref GetSixAxisSensorLifo(ref currentNpad, isRightPair);
 
             WriteNewSixInputEntry(ref lifo, ref newState);
 

@@ -4,13 +4,14 @@ using Ryujinx.Common.Configuration.Hid;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Ryujinx.Common.Memory;
+using Ryujinx.HLE.HOS.Services.Hid.Types.Common;
 using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory;
-using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Common;
 using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Mouse;
 using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Keyboard;
 using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.DebugPad;
 using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.TouchScreen;
 using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Npad;
+using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.SevenSixAxis;
 using Ryujinx.HLE.HOS.Kernel.Memory;
 
 namespace Ryujinx.HLE.HOS.Services.Hid
@@ -25,11 +26,12 @@ namespace Ryujinx.HLE.HOS.Services.Hid
 
         internal const int SharedMemEntryCount = 17;
 
-        public DebugPadDevice DebugPad;
-        public TouchDevice    Touchscreen;
-        public MouseDevice    Mouse;
-        public KeyboardDevice Keyboard;
-        public NpadDevices    Npads;
+        public DebugPadDevice     DebugPad;
+        public TouchDevice        Touchscreen;
+        public MouseDevice        Mouse;
+        public KeyboardDevice     Keyboard;
+        public NpadDevices        Npads;
+        public SevenSixAxisDevice SevenSixAxis;
 
         private static void CheckTypeSizeOrThrow<T>(int expectedSize)
         {
@@ -41,11 +43,12 @@ namespace Ryujinx.HLE.HOS.Services.Hid
 
         static Hid()
         {
-            CheckTypeSizeOrThrow<RingLifo<DebugPadState>>(0x2c8);
-            CheckTypeSizeOrThrow<RingLifo<TouchScreenState>>(0x2C38);
-            CheckTypeSizeOrThrow<RingLifo<MouseState>>(0x350);
-            CheckTypeSizeOrThrow<RingLifo<KeyboardState>>(0x3D8);
+            CheckTypeSizeOrThrow<RingLifo<DebugPadState, Array17<AtomicStorage<DebugPadState>>>>(0x2c8);
+            CheckTypeSizeOrThrow<RingLifo<TouchScreenState, Array17<AtomicStorage<TouchScreenState>>>>(0x2C38);
+            CheckTypeSizeOrThrow<RingLifo<MouseState, Array17<AtomicStorage<MouseState>>>>(0x350);
+            CheckTypeSizeOrThrow<RingLifo<KeyboardState, Array17<AtomicStorage<KeyboardState>>>>(0x3D8);
             CheckTypeSizeOrThrow<Array10<NpadState>>(0x32000);
+            CheckTypeSizeOrThrow<SevenSixAxisSensor>(0x20);
             CheckTypeSizeOrThrow<SharedMemory>(Horizon.HidSize);
         }
 
@@ -59,11 +62,13 @@ namespace Ryujinx.HLE.HOS.Services.Hid
 
         public void InitDevices()
         {
-            DebugPad    = new DebugPadDevice(_device, true);
-            Touchscreen = new TouchDevice(_device, true);
-            Mouse       = new MouseDevice(_device, false);
-            Keyboard    = new KeyboardDevice(_device, false);
-            Npads       = new NpadDevices(_device, true);
+            DebugPad     = new DebugPadDevice(_device, true);
+            Touchscreen  = new TouchDevice(_device, true);
+            Mouse        = new MouseDevice(_device, false);
+            Keyboard     = new KeyboardDevice(_device, false);
+            Npads        = new NpadDevices(_device, true);
+            SevenSixAxis = new SevenSixAxisDevice(_device, false);
+
         }
 
         public void RefreshInputConfig(List<InputConfig> inputConfig)

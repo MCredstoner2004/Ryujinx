@@ -453,7 +453,7 @@ namespace Ryujinx.Input.HLE
                 accelerometer = Truncate(motionInput.Accelerometer, 3);
                 rotation = Truncate(motionInput.Rotation * 0.0027f, 3);
 
-                Matrix4x4 orientation = motionInput.GetOrientation();
+                Matrix4x4 orientation = Matrix4x4.CreateFromQuaternion(motionInput.GetOrientation());
 
                 orientationForHLE[0] = Math.Clamp(orientation.M11, -1f, 1f);
                 orientationForHLE[1] = Math.Clamp(orientation.M12, -1f, 1f);

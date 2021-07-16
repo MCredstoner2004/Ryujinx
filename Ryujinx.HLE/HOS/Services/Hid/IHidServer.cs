@@ -1,7 +1,10 @@
 using Ryujinx.Common;
 using Ryujinx.Common.Logging;
+using Ryujinx.Common.Memory;
+using Ryujinx.HLE.HOS.Services.Hid.Types.Common;
 using Ryujinx.HLE.HOS.Ipc;
 using Ryujinx.HLE.HOS.Kernel.Common;
+using Ryujinx.HLE.HOS.Kernel.Memory;
 using Ryujinx.HLE.HOS.Kernel.Threading;
 using Ryujinx.HLE.HOS.Services.Hid.HidServer;
 using Ryujinx.HLE.HOS.Services.Hid.Types;
@@ -9,6 +12,7 @@ using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Npad;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace Ryujinx.HLE.HOS.Services.Hid
@@ -36,7 +40,6 @@ namespace Ryujinx.HLE.HOS.Services.Hid
 #pragma warning disable CS0649
         private long  _vibrationGcErmCommand;
 #pragma warning restore CS0649
-        private float _sevenSixAxisSensorFusionStrength;
 
         private HidSensorFusionParameters  _sensorFusionParams;
         private HidAccelerometerParameters _accelerometerParams;
@@ -1281,7 +1284,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid
         public ResultCode ActivateConsoleSixAxisSensor(ServiceCtx context)
         {
             long appletResourceUserId = context.RequestData.ReadInt64();
-
+            context.Device.Hid.SevenSixAxis.Active = true;
             Logger.Stub?.PrintStub(LogClass.ServiceHid, new { appletResourceUserId });
 
             return ResultCode.Success;
@@ -1292,9 +1295,18 @@ namespace Ryujinx.HLE.HOS.Services.Hid
         public ResultCode StartConsoleSixAxisSensor(ServiceCtx context)
         {
             int  consoleSixAxisSensorHandle = context.RequestData.ReadInt32();
-            long appletResourceUserId       = context.RequestData.ReadInt64();
+            ulong appletResourceUserId      = context.RequestData.ReadUInt64();
 
-            Logger.Stub?.PrintStub(LogClass.ServiceHid, new { appletResourceUserId, consoleSixAxisSensorHandle });
+            bool was_stoped = context.Device.Hid.SevenSixAxis.StartersResourceAppletUserIDs.Count == 0;
+            if (!context.Device.Hid.SevenSixAxis.StartersResourceAppletUserIDs.Contains(appletResourceUserId))
+            {
+                context.Device.Hid.SevenSixAxis.StartersResourceAppletUserIDs.Add(appletResourceUserId);
+                if (was_stoped)
+                {
+                    context.Device.Hid.SevenSixAxis.ReferenceTimestampSet = false;
+                    context.Device.Hid.SevenSixAxis.ResetsCount++;
+                }
+            }
 
             return ResultCode.Success;
         }
@@ -1304,9 +1316,12 @@ namespace Ryujinx.HLE.HOS.Services.Hid
         public ResultCode StopConsoleSixAxisSensor(ServiceCtx context)
         {
             int  consoleSixAxisSensorHandle = context.RequestData.ReadInt32();
-            long appletResourceUserId       = context.RequestData.ReadInt64();
+            ulong appletResourceUserId      = context.RequestData.ReadUInt64();
 
-            Logger.Stub?.PrintStub(LogClass.ServiceHid, new { appletResourceUserId, consoleSixAxisSensorHandle });
+            if (context.Device.Hid.SevenSixAxis.StartersResourceAppletUserIDs.Contains(appletResourceUserId))
+            {
+                context.Device.Hid.SevenSixAxis.StartersResourceAppletUserIDs.Remove(appletResourceUserId);
+            }
 
             return ResultCode.Success;
         }
@@ -1316,6 +1331,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid
         public ResultCode ActivateSevenSixAxisSensor(ServiceCtx context)
         {
             long appletResourceUserId = context.RequestData.ReadInt64();
+            context.Device.Hid.SevenSixAxis.Active = true;
 
             Logger.Stub?.PrintStub(LogClass.ServiceHid, new { appletResourceUserId });
 
@@ -1326,10 +1342,18 @@ namespace Ryujinx.HLE.HOS.Services.Hid
         // StartSevenSixAxisSensor(nn::applet::AppletResourceUserId)
         public ResultCode StartSevenSixAxisSensor(ServiceCtx context)
         {
-            long appletResourceUserId = context.RequestData.ReadInt64();
+            ulong appletResourceUserId = context.RequestData.ReadUInt64();
 
-            Logger.Stub?.PrintStub(LogClass.ServiceHid, new { appletResourceUserId });
-
+            bool was_stoped = context.Device.Hid.SevenSixAxis.StartersResourceAppletUserIDs.Count == 0;
+            if (!context.Device.Hid.SevenSixAxis.StartersResourceAppletUserIDs.Contains(appletResourceUserId))
+            {
+                context.Device.Hid.SevenSixAxis.StartersResourceAppletUserIDs.Add(appletResourceUserId);
+                if (was_stoped)
+                {
+                    context.Device.Hid.SevenSixAxis.ReferenceTimestampSet = false;
+                    context.Device.Hid.SevenSixAxis.ResetsCount++;
+                }
+            }
             return ResultCode.Success;
         }
 
@@ -1337,9 +1361,12 @@ namespace Ryujinx.HLE.HOS.Services.Hid
         // StopSevenSixAxisSensor(nn::applet::AppletResourceUserId)
         public ResultCode StopSevenSixAxisSensor(ServiceCtx context)
         {
-            long appletResourceUserId = context.RequestData.ReadInt64();
+            ulong appletResourceUserId = context.RequestData.ReadUInt64();
 
-            Logger.Stub?.PrintStub(LogClass.ServiceHid, new { appletResourceUserId });
+            if (context.Device.Hid.SevenSixAxis.StartersResourceAppletUserIDs.Contains(appletResourceUserId))
+            {
+                context.Device.Hid.SevenSixAxis.StartersResourceAppletUserIDs.Remove(appletResourceUserId);
+            }
 
             return ResultCode.Success;
         }
@@ -1348,14 +1375,18 @@ namespace Ryujinx.HLE.HOS.Services.Hid
         // InitializeSevenSixAxisSensor(array<nn::sf::NativeHandle>, ulong Counter0, array<nn::sf::NativeHandle>, ulong Counter1, nn::applet::AppletResourceUserId)
         public ResultCode InitializeSevenSixAxisSensor(ServiceCtx context)
         {
-            long appletResourceUserId = context.RequestData.ReadInt64();
-            long counter0             = context.RequestData.ReadInt64();
-            long counter1             = context.RequestData.ReadInt64();
+            ulong appletResourceUserId = context.RequestData.ReadUInt64();
+            long counter0              = context.RequestData.ReadInt64();
+            long counter1              = context.RequestData.ReadInt64();
+            int handle0                = context.Request.HandleDesc.ToCopy[0];
+            int handle1                = context.Request.HandleDesc.ToCopy[1];
 
-            // TODO: Determine if array<nn::sf::NativeHandle> is a buffer or not...
+            KTransferMemory SevenSixAxisSensorTransferMem0 = context.Process.HandleTable.GetObject<KTransferMemory>(handle0);
+            KTransferMemory SevenSixAxisSensorTransferMem1 = context.Process.HandleTable.GetObject<KTransferMemory>(handle1);
 
-            Logger.Stub?.PrintStub(LogClass.ServiceHid, new { appletResourceUserId, counter0, counter1 });
-
+            context.Device.Hid.SevenSixAxis.TransferMemory = SevenSixAxisSensorTransferMem0;
+            context.Device.Hid.SevenSixAxis.Active = true;
+            context.Device.Hid.SevenSixAxis.InitializerResourceAppletUserID = appletResourceUserId;
             return ResultCode.Success;
         }
 
@@ -1363,7 +1394,17 @@ namespace Ryujinx.HLE.HOS.Services.Hid
         // FinalizeSevenSixAxisSensor(nn::applet::AppletResourceUserId)
         public ResultCode FinalizeSevenSixAxisSensor(ServiceCtx context)
         {
-            long appletResourceUserId = context.RequestData.ReadInt64();
+            ulong appletResourceUserId = context.RequestData.ReadUInt64();
+
+            if (appletResourceUserId == context.Device.Hid.SevenSixAxis.InitializerResourceAppletUserID)
+            {
+                context.Device.Hid.SevenSixAxis.InitializerResourceAppletUserID = 0;
+                context.Device.Hid.SevenSixAxis.Active = false;
+                if (context.Device.Hid.SevenSixAxis.StartersResourceAppletUserIDs.Contains(appletResourceUserId))
+                {
+                context.Device.Hid.SevenSixAxis.StartersResourceAppletUserIDs.Remove(appletResourceUserId);
+                }
+            }
 
             Logger.Stub?.PrintStub(LogClass.ServiceHid, new { appletResourceUserId });
 
@@ -1374,10 +1415,10 @@ namespace Ryujinx.HLE.HOS.Services.Hid
         // SetSevenSixAxisSensorFusionStrength(float Strength, nn::applet::AppletResourceUserId)
         public ResultCode SetSevenSixAxisSensorFusionStrength(ServiceCtx context)
         {
-                 _sevenSixAxisSensorFusionStrength = context.RequestData.ReadSingle();
-            long appletResourceUserId              = context.RequestData.ReadInt64();
+            context.Device.Hid.SevenSixAxis.SensorFusionStrength  = context.RequestData.ReadSingle();
+            long appletResourceUserId           = context.RequestData.ReadInt64();
 
-            Logger.Stub?.PrintStub(LogClass.ServiceHid, new { appletResourceUserId, _sevenSixAxisSensorFusionStrength });
+            Logger.Stub?.PrintStub(LogClass.ServiceHid, new { appletResourceUserId, context.Device.Hid.SevenSixAxis.SensorFusionStrength });
 
             return ResultCode.Success;
         }
@@ -1388,9 +1429,9 @@ namespace Ryujinx.HLE.HOS.Services.Hid
         {
             long appletResourceUserId = context.RequestData.ReadInt64();
 
-            context.ResponseData.Write(_sevenSixAxisSensorFusionStrength);
+            context.ResponseData.Write(context.Device.Hid.SevenSixAxis.SensorFusionStrength);
 
-            Logger.Stub?.PrintStub(LogClass.ServiceHid, new { appletResourceUserId, _sevenSixAxisSensorFusionStrength });
+            Logger.Stub?.PrintStub(LogClass.ServiceHid, new { appletResourceUserId, context.Device.Hid.SevenSixAxis.SensorFusionStrength });
 
             return ResultCode.Success;
         }
@@ -1401,7 +1442,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid
         {
             long appletResourceUserId = context.RequestData.ReadInt64();
 
-            Logger.Stub?.PrintStub(LogClass.ServiceHid, new { appletResourceUserId });
+            context.Device.Hid.SevenSixAxis.ReferenceTimestampSet = false;
 
             return ResultCode.Success;
         }

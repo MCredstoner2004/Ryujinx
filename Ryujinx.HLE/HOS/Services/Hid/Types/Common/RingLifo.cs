@@ -3,11 +3,12 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Common
+namespace Ryujinx.HLE.HOS.Services.Hid.Types.Common
 {
-    struct RingLifo<T> where T: unmanaged
+    struct RingLifo<T, StorageType>
+    where T: unmanaged
+    where StorageType: IArray<AtomicStorage<T>>
     {
-        private const ulong MaxEntries = 17;
 
 #pragma warning disable CS0169
         private ulong _unused;
@@ -17,10 +18,12 @@ namespace Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Common
 #pragma warning restore CS0414
         private ulong _index;
         private ulong _count;
-        private Array17<AtomicStorage<T>> _storage;
+        private StorageType _storage;
+        private ulong MaxEntries => (ulong)_storage.Length;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ulong ReadCurrentIndex()
+
         {
             return Interlocked.Read(ref _index);
         }
@@ -32,7 +35,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Common
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ulong GetNextIndexForWrite(ulong index)
+        private ulong GetNextIndexForWrite(ulong index)
         {
             return (index + 1) % MaxEntries;
         }
@@ -138,12 +141,11 @@ namespace Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Common
             Interlocked.Exchange(ref _index, 0);
         }
 
-        public static RingLifo<T> Create()
+        public static RingLifo<T, StorageType> Create()
         {
-            return new RingLifo<T>
-            {
-                _bufferCount = MaxEntries
-            };
+            RingLifo<T, StorageType> temp = new RingLifo<T, StorageType>();
+            temp._bufferCount = (ulong)temp._storage.Length;
+            return temp;
         }
     }
 }

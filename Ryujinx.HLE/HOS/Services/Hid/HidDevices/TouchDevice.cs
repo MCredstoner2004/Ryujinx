@@ -1,4 +1,5 @@
-using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Common;
+using Ryujinx.HLE.HOS.Services.Hid.Types.Common;
+using Ryujinx.Common.Memory;
 using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.TouchScreen;
 using System;
 
@@ -10,7 +11,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid
 
         public void Update(params TouchPoint[] points)
         {
-            ref RingLifo<TouchScreenState> lifo = ref _device.Hid.SharedMemory.TouchScreen;
+            ref RingLifo<TouchScreenState, Array17<AtomicStorage<TouchScreenState>>> lifo = ref _device.Hid.SharedMemory.TouchScreen;
 
             ref TouchScreenState previousEntry = ref lifo.GetCurrentEntryRef();
 

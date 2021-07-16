@@ -73,11 +73,11 @@ namespace Ryujinx.Input
             TimeStamp = timestamp;
         }
 
-        public Matrix4x4 GetOrientation()
+        public Quaternion GetOrientation()
         {
-            return Matrix4x4.CreateFromQuaternion(_filter.Quaternion);
+            return _filter.Quaternion;
         }
-
+        
         private static Vector3 DegreeToRad(Vector3 degree)
         {
             return degree * (MathF.PI / 180);

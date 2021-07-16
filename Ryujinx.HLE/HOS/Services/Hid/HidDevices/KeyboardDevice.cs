@@ -1,4 +1,5 @@
-using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Common;
+using Ryujinx.HLE.HOS.Services.Hid.Types.Common;
+using Ryujinx.Common.Memory;
 using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Keyboard;
 using System;
 
@@ -10,7 +11,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid
 
         public unsafe void Update(KeyboardInput keyState)
         {
-            ref RingLifo<KeyboardState> lifo = ref _device.Hid.SharedMemory.Keyboard;
+            ref RingLifo<KeyboardState, Array17<AtomicStorage<KeyboardState>>> lifo = ref _device.Hid.SharedMemory.Keyboard;
 
             if (!Active)
             {

@@ -1,4 +1,5 @@
-using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Common;
+using Ryujinx.HLE.HOS.Services.Hid.Types.Common;
+using Ryujinx.Common.Memory;
 using Ryujinx.HLE.HOS.Services.Hid.Types.SharedMemory.Mouse;
 
 namespace Ryujinx.HLE.HOS.Services.Hid
@@ -9,7 +10,7 @@ namespace Ryujinx.HLE.HOS.Services.Hid
 
         public void Update(int mouseX, int mouseY, uint buttons = 0, int scrollX = 0, int scrollY = 0, bool connected = false)
         {
-            ref RingLifo<MouseState> lifo = ref _device.Hid.SharedMemory.Mouse;
+            ref RingLifo<MouseState, Array17<AtomicStorage<MouseState>>> lifo = ref _device.Hid.SharedMemory.Mouse;
 
             ref MouseState previousEntry = ref lifo.GetCurrentEntryRef();
             
